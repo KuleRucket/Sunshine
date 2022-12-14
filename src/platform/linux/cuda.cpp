@@ -180,7 +180,7 @@ public:
     return sws.load_ram(img, tex.array) || sws.convert(frame->data[0], frame->data[1], frame->linesize[0], frame->linesize[1], tex_obj(tex), stream.get());
   }
 
-  int set_frame(AVFrame *frame) {
+  int set_frame(AVFrame *frame) override {
     if(cuda_t::set_frame(frame)) {
       return -1;
     }
@@ -418,8 +418,6 @@ public:
     if(!handle) {
       return -1;
     }
-
-    ctx_t ctx { handle->handle };
 
     auto status_params = handle->status();
     if(!status_params) {
