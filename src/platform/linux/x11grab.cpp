@@ -525,9 +525,11 @@ struct x11_attr_t : public display_t {
     }
 
 #ifdef SUNSHINE_BUILD_CUDA
+#ifndef NVFBC_TOSYS
     if(mem_type == mem_type_e::cuda) {
       return cuda::make_hwdevice(width, height, false);
     }
+#endif
 #endif
 
     return std::make_shared<hwdevice_t>();

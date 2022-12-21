@@ -5,11 +5,15 @@
 #ifndef SUNSHINE_COMMON_H
 #define SUNSHINE_COMMON_H
 
+#define NVFBC_TOSYS
+
 #include <bitset>
 #include <filesystem>
 #include <functional>
 #include <mutex>
 #include <string>
+#include <iostream>
+#include <chrono>
 
 #include "src/thread_safe.h"
 #include "src/utility.h"

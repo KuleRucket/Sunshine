@@ -245,6 +245,7 @@ int init_main_va() {
 }
 
 int init() {
+  BOOST_LOG(info) << "va::init()"sv;
   if(init_main_va()) {
     return -1;
   }

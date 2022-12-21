@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <iostream>
 
 #include "cuda.h"
 
@@ -202,6 +203,7 @@ int tex_t::copy(std::uint8_t *src, int height, int pitch) {
 }
 
 std::optional<tex_t> tex_t::make(int height, int pitch) {
+  std::cout << "cuda.cu::cuda::tex_t:make()" << std::endl;
   tex_t tex;
 
   auto format = cudaCreateChannelDesc<uchar4>();
@@ -283,6 +285,7 @@ sws_t::sws_t(int in_width, int in_height, int out_width, int out_height, int pit
 }
 
 std::optional<sws_t> sws_t::make(int in_width, int in_height, int out_width, int out_height, int pitch) {
+  std::cout << "cuda.cu::cuda::sws_t::make()" << std::endl;
   cudaDeviceProp props;
   int device;
   CU_CHECK_OPT(cudaGetDevice(&device), "Couldn't get cuda device");
@@ -297,10 +300,12 @@ std::optional<sws_t> sws_t::make(int in_width, int in_height, int out_width, int
 }
 
 int sws_t::convert(std::uint8_t *Y, std::uint8_t *UV, std::uint32_t pitchY, std::uint32_t pitchUV, cudaTextureObject_t texture, stream_t::pointer stream) {
+  std::cout << "cuda.cu::cuda::sws_t::convert()" << std::endl;
   return convert(Y, UV, pitchY, pitchUV, texture, stream, viewport);
 }
 
 int sws_t::convert(std::uint8_t *Y, std::uint8_t *UV, std::uint32_t pitchY, std::uint32_t pitchUV, cudaTextureObject_t texture, stream_t::pointer stream, const viewport_t &viewport) {
+  std::cout << "cuda.cu::cuda::sws_t::convert() viewport" << std::endl;
   int threadsX = viewport.width / 2;
   int threadsY = viewport.height / 2;
 
@@ -313,6 +318,7 @@ int sws_t::convert(std::uint8_t *Y, std::uint8_t *UV, std::uint32_t pitchY, std:
 }
 
 void sws_t::set_colorspace(std::uint32_t colorspace, std::uint32_t color_range) {
+  std::cout << "cuda.cu::cuda::sws_t::set_colorspace()" << std::endl;
   video::color_t *color_p;
   switch(colorspace) {
   case 5: // SWS_CS_SMPTE170M
@@ -335,6 +341,7 @@ void sws_t::set_colorspace(std::uint32_t colorspace, std::uint32_t color_range) 
 }
 
 int sws_t::load_ram(platf::img_t &img, cudaArray_t array) {
+  std::cout << "cuda.cu::cuda::sws_t::load_ram()" << std::endl;
   return CU_CHECK_IGNORE(cudaMemcpy2DToArray(array, 0, 0, img.data, img.row_pitch, img.width * img.pixel_pitch, img.height, cudaMemcpyHostToDevice), "Couldn't copy to cuda array");
 }
 

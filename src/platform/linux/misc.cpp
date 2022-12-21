@@ -251,6 +251,7 @@ std::unique_ptr<deinit_t> init() {
 #ifdef SUNSHINE_BUILD_WAYLAND
   if(std::getenv("WAYLAND_DISPLAY")) {
     window_system = window_system_e::WAYLAND;
+    BOOST_LOG(info) << "Window system: Wayland"sv;
   }
 #endif
 #if defined(SUNSHINE_BUILD_X11) || defined(SUNSHINE_BUILD_CUDA)
@@ -260,6 +261,7 @@ std::unique_ptr<deinit_t> init() {
     }
 
     window_system = window_system_e::X11;
+    BOOST_LOG(info) << "Window system: X11"sv;
   }
 #endif
 #ifdef SUNSHINE_BUILD_CUDA
@@ -292,6 +294,11 @@ std::unique_ptr<deinit_t> init() {
   if(sources.none()) {
     return nullptr;
   }
+
+  std::cout << "NVFBC - " << sources[source::KMS] << std::endl;
+  std::cout << "WAYLAND - " << sources[source::KMS] << std::endl;
+  std::cout << "KMS - " << sources[source::KMS] << std::endl;
+  std::cout << "X11 - " << sources[source::X11] << std::endl;
 
   if(!gladLoaderLoadEGL(EGL_NO_DISPLAY) || !eglGetPlatformDisplay) {
     BOOST_LOG(warning) << "Couldn't load EGL library"sv;
