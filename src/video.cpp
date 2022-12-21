@@ -76,7 +76,6 @@ int hwframe_ctx(ctx_t &ctx, buffer_t &hwdevice, AVPixelFormat format);
 class swdevice_t : public platf::hwdevice_t {
 public:
   int convert(platf::img_t &img) override {
-    std::cout << "+swdevice_t::convert()" << std::endl;
     av_frame_make_writable(sw_frame.get());
 
     const int linesizes[2] {
@@ -99,7 +98,6 @@ public:
     int ret = sws_scale(sws.get(), (std::uint8_t *const *)&img.data, linesizes, 0, img.height, data, sw_frame->linesize);
     if(ret <= 0) {
       BOOST_LOG(error) << "Couldn't convert image to required format and/or size"sv;
-      std::cout << "-swdevice_t::convert()1" << std::endl;
       return -1;
     }
 
@@ -110,11 +108,9 @@ public:
       if(status < 0) {
         char string[AV_ERROR_MAX_STRING_SIZE];
         BOOST_LOG(error) << "Failed to transfer image data to hardware frame: "sv << av_make_error_string(string, AV_ERROR_MAX_STRING_SIZE, status);
-        std::cout << "-swdevice_t::convert()2" << std::endl;
         return -1;
       }
     }
-    std::cout << "-swdevice_t::convert()" << std::endl;
     return 0;
   }
 
@@ -773,7 +769,6 @@ void captureThread(
 }
 
 int encode(int64_t frame_nr, session_t &session, frame_t::pointer frame, safe::mail_raw_t::queue_t<packet_t> &packets, void *channel_data) {
-  BOOST_LOG(info) << "+video::encode(frame_nr="sv << frame_nr << ")"sv;
   frame->pts = frame_nr;
 
   auto &ctx = session.ctx;
@@ -786,7 +781,6 @@ int encode(int64_t frame_nr, session_t &session, frame_t::pointer frame, safe::m
   if(ret < 0) {
     char err_str[AV_ERROR_MAX_STRING_SIZE] { 0 };
     BOOST_LOG(error) << "Could not send a frame for encoding: "sv << av_make_error_string(err_str, AV_ERROR_MAX_STRING_SIZE, ret);
-    BOOST_LOG(info) << "-video::encode(frame_nr="sv << frame_nr << ")1"sv;
     return -1;
   }
 
@@ -796,11 +790,9 @@ int encode(int64_t frame_nr, session_t &session, frame_t::pointer frame, safe::m
 
     ret = avcodec_receive_packet(ctx.get(), av_packet);
     if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-      BOOST_LOG(info) << "-video::encode(frame_nr="sv << frame_nr << ")2"sv;
       return 0;
     }
     else if(ret < 0) {
-      BOOST_LOG(info) << "-video::encode(frame_nr="sv << frame_nr << ")3"sv;
       return ret;
     }
 
@@ -834,7 +826,6 @@ int encode(int64_t frame_nr, session_t &session, frame_t::pointer frame, safe::m
     packets->raise(std::move(packet));
   }
 
-  BOOST_LOG(info) << "-video::encode(frame_nr="sv << frame_nr << ")"sv;
   return 0;
 }
 
@@ -1072,10 +1063,8 @@ void encode_run(
   safe::signal_t &reinit_event,
   const encoder_t &encoder,
   void *channel_data) {
-  BOOST_LOG(info) << "+video::encode_run()"sv;
   auto session = make_session(encoder, config, width, height, std::move(hwdevice));
   if(!session) {
-    BOOST_LOG(info) << "-video::encode_run()1"sv;
     return;
   }
 
@@ -1111,14 +1100,12 @@ void encode_run(
 
     if(encode(frame_nr++, *session, frame, packets, channel_data)) {
       BOOST_LOG(error) << "Could not encode video packet"sv;
-      BOOST_LOG(info) << "-video::encode_run()2"sv;
       return;
     }
 
     frame->pict_type = AV_PICTURE_TYPE_NONE;
     frame->key_frame = 0;
   }
-  BOOST_LOG(info) << "-video::encode_run()"sv;
 }
 
 input::touch_port_t make_port(platf::display_t *display, const config_t &config) {
@@ -1352,7 +1339,6 @@ void capture_async(
   safe::mail_t mail,
   config_t &config,
   void *channel_data) {
-  BOOST_LOG(info) << "video::capture_async()"sv;
   auto shutdown_event = mail->event<bool>(mail::shutdown);
 
   auto images = std::make_shared<img_event_t::element_type>();
@@ -1426,7 +1412,6 @@ void capture(
   config_t config,
   void *channel_data) {
 
-  BOOST_LOG(info) << "video::capture()"sv;
   auto idr_events = mail->event<bool>(mail::idr);
 
   idr_events->raise(true);
@@ -1482,8 +1467,9 @@ int validate_config(std::shared_ptr<platf::display_t> &disp, const encoder_t &en
   }
 
   if(session->device->convert(*img)) {
-    std::cout << "FIXME" << std::endl;
-    //return -1;
+#ifndef NVFBC_TOSYS
+    return -1;
+#endif
   }
 
   auto frame = session->device->frame;
