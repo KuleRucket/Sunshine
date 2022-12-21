@@ -103,7 +103,6 @@ public:
   }
 
   int set_frame(AVFrame *frame) override {
-    BOOST_LOG(info) << "cuda.cpp::cuda::cuda_t::set_frame()"sv;
     this->hwframe.reset(frame);
     this->frame = frame;
 
@@ -141,7 +140,6 @@ public:
   }
 
   void set_colorspace(std::uint32_t colorspace, std::uint32_t color_range) override {
-    BOOST_LOG(info) << "cuda.cpp::cuda::cuda_t::set_colorspace()"sv;
     sws.set_colorspace(colorspace, color_range);
 
     auto tex = tex_t::make(height, width * 4);
@@ -187,12 +185,10 @@ public:
 class cuda_ram_t : public cuda_t {
 public:
   int convert(platf::img_t &img) override {
-    BOOST_LOG(info) << "cuda.cpp::cuda::cuda_ram_t::convert()"sv;
     return sws.load_ram(img, tex.array) || sws.convert(frame->data[0], frame->data[1], frame->linesize[0], frame->linesize[1], tex_obj(tex), stream.get());
   }
 
   int set_frame(AVFrame *frame) override {
-    BOOST_LOG(info) << "cuda.cpp::cuda::cuda_ram_t::set_frame()"sv;
     if(cuda_t::set_frame(frame)) {
       return -1;
     }
@@ -213,13 +209,11 @@ public:
 class cuda_vram_t : public cuda_t {
 public:
   int convert(platf::img_t &img) override {
-    BOOST_LOG(info) << "cuda.cpp::cuda::cuda_t::convert()"sv;
     return sws.convert(frame->data[0], frame->data[1], frame->linesize[0], frame->linesize[1], tex_obj(((img_t *)&img)->tex), stream.get());
   }
 };
 
 std::shared_ptr<platf::hwdevice_t> make_hwdevice(int width, int height, bool vram) {
-  BOOST_LOG(info) << "cuda.cpp::cuda::cuda_t::make_hwdevice()"sv;
   if(init()) {
     return nullptr;
   }
@@ -251,7 +245,6 @@ static constexpr inline NVFBC_BOOL nv_bool(bool b) {
 
 static void *handle { nullptr };
 int init() {
-  BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::init()"sv;
   static bool funcs_loaded = false;
 
   if(funcs_loaded) return 0;
@@ -290,8 +283,6 @@ int init() {
 class ctx_t {
 public:
   ctx_t(NVFBC_SESSION_HANDLE handle) {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::ctx_t::ctx_t()"sv;
-    BOOST_LOG(info) << "nvFBCBindContext"sv;
     NVFBC_BIND_CONTEXT_PARAMS params { NVFBC_BIND_CONTEXT_PARAMS_VER };
 
     if(func.nvFBCBindContext(handle, &params)) {
@@ -302,8 +293,6 @@ public:
   }
 
   ~ctx_t() {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::ctx_t::~ctx_t()"sv;
-    BOOST_LOG(info) << "nvFBCReleaseContext"sv;
     NVFBC_RELEASE_CONTEXT_PARAMS params { NVFBC_RELEASE_CONTEXT_PARAMS_VER };
     if(func.nvFBCReleaseContext(handle, &params)) {
       BOOST_LOG(error) << "Couldn't release NvFBC context from current thread: " << func.nvFBCGetLastErrorStr(handle);
@@ -336,7 +325,6 @@ public:
   void* pBuffer = NULL;
 
   static std::optional<handle_t> make() {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::handle_t::make()"sv;
     NVFBC_CREATE_HANDLE_PARAMS params { NVFBC_CREATE_HANDLE_PARAMS_VER };
 
     handle_t handle;
@@ -359,7 +347,6 @@ public:
   }
 
   std::optional<NVFBC_GET_STATUS_PARAMS> status() {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::handle_t::status()"sv;
     NVFBC_GET_STATUS_PARAMS params { NVFBC_GET_STATUS_PARAMS_VER };
 
     auto status = func.nvFBCGetStatus(handle, &params);
@@ -373,7 +360,6 @@ public:
   }
 
   int capture(NVFBC_CREATE_CAPTURE_SESSION_PARAMS &capture_params) {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::handle_t::capture()"sv;
     if(func.nvFBCCreateCaptureSession(handle, &capture_params)) {
       BOOST_LOG(error) << "Failed to start capture session: "sv << last_error();
       return -1;
@@ -412,7 +398,6 @@ public:
   }
 
   int stop() {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::handle_t::stop()"sv;
     if(!handle_flags[SESSION_CAPTURE]) {
       return 0;
     }
@@ -430,8 +415,6 @@ public:
   }
 
   int reset() {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::handle_t::reset()"sv;
-
     if(!handle_flags[SESSION_HANDLE]) {
       return 0;
     }
@@ -440,7 +423,6 @@ public:
 
     NVFBC_DESTROY_HANDLE_PARAMS params { NVFBC_DESTROY_HANDLE_PARAMS_VER };
 
-    BOOST_LOG(info) << "reset() - nvFBCDestroyHandle"sv;
     if(func.nvFBCDestroyHandle(handle, &params)) {
       BOOST_LOG(error) << "Couldn't destroy session handle: "sv << func.nvFBCGetLastErrorStr(handle);
     }
@@ -462,7 +444,6 @@ public:
 class display_t : public platf::display_t {
 public:
   int init(const std::string_view &display_name, int framerate) {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::init(framerate=" << framerate << ")"sv;
     auto handle = handle_t::make();
     if(!handle) {
       return -1;
@@ -529,8 +510,10 @@ public:
     return 0;
   }
 
+  /*
+   * First wait until it's time to take a snapshot for the next frame, then take the snapshot
+   */
   platf::capture_e capture(snapshot_cb_t &&snapshot_cb, std::shared_ptr<platf::img_t> img, bool *cursor) override {
-    BOOST_LOG(info) << "+cuda.cpp::cuda::nvfbc::capture()"sv;
     auto next_frame = std::chrono::steady_clock::now();
 
     // Force display_t::capture to initialize handle_t::capture
@@ -544,9 +527,11 @@ public:
     while(img) {
       auto now = std::chrono::steady_clock::now();
       if(next_frame > now) {
+        // sleep for 2/3 of the time until the next frame
         std::this_thread::sleep_for((next_frame - now) / 3 * 2);
       }
       while(next_frame > now) {
+        // then microsleep until the time comes
         std::this_thread::sleep_for(1ns);
         now = std::chrono::steady_clock::now();
       }
@@ -569,13 +554,11 @@ public:
       }
     }
 
-    BOOST_LOG(info) << "-cuda.cpp::cuda::nvfbc::capture()"sv;
     return platf::capture_e::ok;
   }
 
   // Reinitialize the capture session.
   platf::capture_e reinit(bool cursor) {
-    BOOST_LOG(info) << "cuda.cpp::cuda::nvfbc::reinit()"sv;
     if(handle.stop()) {
       return platf::capture_e::error;
     }
@@ -658,8 +641,9 @@ public:
   }
 
   platf::capture_e snapshot(platf::img_t *img, std::chrono::milliseconds timeout, bool cursor) {
-    //std::cout << "+cuda.cpp::cuda::nvfbc::snapshot()" << std::endl;
-    //auto start = std::chrono::system_clock::now();
+    auto start = std::chrono::steady_clock::now();
+    //auto nanosec = start.time_since_epoch();
+    //std::cout << "nano::before snapshot: " << nanosec.count()/1000000.0 << "ms" << std::endl;
 
     if(cursor != cursor_visible) {
       auto status = reinit(cursor);
@@ -707,10 +691,11 @@ public:
     }
 #endif
     img->data = (uint8_t*)handle.pBuffer;
-    //auto stop = std::chrono::system_clock::now();
-    //std::chrono::duration<double> diff = stop-start;
-    //std::cout << "elapsed: " << std::fixed << std::setprecision(9) << diff.count() << std::endl;
-    //std::cout << "-cuda.cpp::cuda::nvfbc::snapshot()" << std::endl;
+    auto stop = std::chrono::steady_clock::now();
+    std::chrono::duration<double> diff = stop-start;
+    //nanosec = stop.time_since_epoch();
+    //std::cout << "nano::after snapshot: " << nanosec.count()/1000000.0 << "ms" << std::endl;
+    std::cout << "nvfbc snapshot duration: " << std::fixed << std::setprecision(9) << diff.count()*1000.0 << "ms" << std::endl;
 
     return platf::capture_e::ok;
   }
@@ -762,7 +747,6 @@ public:
 
 namespace platf {
 std::shared_ptr<display_t> nvfbc_display(mem_type_e hwdevice_type, const std::string &display_name, int framerate) {
-  BOOST_LOG(info) << "cuda.cpp::platf::nvfbc_display()"sv;
 #ifndef NVFBC_TOSYS
   if(hwdevice_type != mem_type_e::cuda) {
     BOOST_LOG(error) << "Could not initialize nvfbc display with the given hw device type"sv;
@@ -779,7 +763,6 @@ std::shared_ptr<display_t> nvfbc_display(mem_type_e hwdevice_type, const std::st
 }
 
 std::vector<std::string> nvfbc_display_names() {
-  BOOST_LOG(info) << "cuda.cpp::platf::nvfbc_display()"sv;
 #ifndef NVFBC_TOSYS
   if(cuda::init() || cuda::nvfbc::init()) {
 #else
