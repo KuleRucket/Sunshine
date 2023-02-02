@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 AS sunshine-base
+FROM ubuntu:23.04 AS sunshine-base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
