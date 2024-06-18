@@ -299,7 +299,7 @@ jobs:
       - name: Build artifacts
         if: ${{ steps.prepare.outputs.artifacts == 'true' }}
         id: build_artifacts
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./
           file: ${{ matrix.dockerfile }}
@@ -321,7 +321,7 @@ jobs:
 
       - name: Build and push
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./
           file: ${{ matrix.dockerfile }}
